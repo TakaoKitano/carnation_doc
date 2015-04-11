@@ -12,6 +12,14 @@ user token は [Client Password](https://tools.ietf.org/html/rfc6749#section-2.3
 
 viewer token は、[Client Credentials Grant](https://tools.ietf.org/html/rfc6749#section-4.4) の方式で取得します.
 
+
+現状の実装では、Access Token は、24時間で無効になります.
+無効になった場合は、再取得もしくは refresh token が必要です.
+なお refresh token を行うことができるのは、user token のみです.
+```
+   self.expires_at = now + 1 * (3600 * 24)  # 1 days for now
+```
+
 ### 1.1 Authentication header 
 
 user token, viewer token どちらもの取得のときも、[RFC2617] (https://tools.ietf.org/html/rfc2617) で規定されている Basic Authentication header を設定する必要があります.
@@ -75,7 +83,7 @@ refresh_token
 }
 ```
 
-### 1.2 get viewer token
+### 1.3 get viewer token
 
 | method        | end point     |
 |---------------|---------------|
@@ -121,7 +129,8 @@ STBの出荷時になんらかの手段で端末に搭載されます.
 | POST          | /api/v1/user  |
 
 ユーザーを作成します.
-この API を呼び出すためには、admin もしくは signup の権限が必要です。
+この API を呼び出すためには、admin もしくは signup の権限が必要です.
+なお現状のこの APIの実装は簡易実装なので今後改良が必要です.
 
 
 **parameters**
@@ -249,7 +258,123 @@ STBの出荷時になんらかの手段で端末に搭載されます.
 
 ### 2.4 get user info
 
+| method        | end point     | valid caller     |
+|---------------|---------------|------------------|
+| GET           | /api/v1/user  | user(of user_id) |
+
+ユーザー情報を取得します
+
+**parameters**
+
+| name          |  value        | mandatory? | default value  |
+|---------------|---------------|------------|----------------|
+| user_id       |  user id      |  yes       | N/A            |
+
+**output**
+
+| name                |  value          | 
+|---------------------|-----------------|
+| id                  |  user_id        |
+| email               |  user email     | 
+| name                |  user name      |
+| role                |  admin:1, default:2, signup:3, 通常:100|
+| status              |  1 (固定)       |
+| timezone            |  timezone(数値) |
+| viewers             | このユーザーが所有している viewerの 一覧（配列） |
+| groups              |  このユーザーが所有している group の一覧（配列） |
+| belong_to_groups    |  このユーザーが所属しているグループの一覧（配列）|
+
+**error**
+
+| code    |  message                        | description |
+|---------|---------------------------------|---------------------------|
+| 400     |  access denied                  | token 不正、権限がない |
+| 404     |  user not found                 | user_id 不正 |
+
+**example**
+
+```
+{
+  "id": 4,
+  "email": "test01@chikaku.com",
+  "name": "harahara",
+  "role": 100,
+  "status": 1,
+  "timezone": 9,
+  "viewers": [
+    {
+      "id": 1,
+      "name": "test01viewer",
+      "status": 1,
+      "user_id": 4,
+      "client_id": 5,
+      "phone_number": null,
+      "postal_code": null,
+      "address": null,
+      "valid_through": 1444636922,
+      "created_at": 1413100922,
+      "timezone": 9,
+      "credentials": {
+        "id": 5,
+        "appid": "6052d5885f9c2a12c09ef90f815225d3",
+        "secret": "f6af879a7db8bfbe183e08c1a68e9035",
+        "created_at": 1413100922
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "name": "test01group",
+      "description": null,
+      "user_id": 4,
+      "created_at": 1413100922
+    }
+  ],
+  "belong_to_groups": [
+    {
+      "id": 1,
+      "name": "test01group",
+      "description": null,
+      "user_id": 4,
+      "created_at": 1413100922
+    }
+  ]
+}
+```
+
 ### 2.5 get user id by email
+
+| method        | end point              | valid caller |
+|---------------|------------------------|--------------|
+| GET           | /api/v1/user_by_email  | user,viewer  |
+
+指定された email を持つユーザーの id を検索します
+
+**parameters**
+
+| name          |  value        | mandatory? | default value  |
+|---------------|---------------|------------|----------------|
+| email         |  user email   |  yes       | N/A            |
+
+**output**
+
+| name                |  value          | 
+|---------------------|-----------------|
+| user_id             |  user id        |
+
+**error**
+
+| code    |  message                        | description |
+|---------|---------------------------------|---------------------------|
+| 404     |  user not found                 | 指定された email の userは無い |
+
+**example**
+```
+{
+  "user_id": 4
+}
+```
 
 ## 3 item upload & delete
 
