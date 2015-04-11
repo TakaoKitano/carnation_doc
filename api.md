@@ -1,3 +1,47 @@
+
+Table of Contents
+=================
+
+  * [carnation server API reference](#carnation-server-api-reference)
+    * [OAuth2 アクセストークン取得](#oauth2-%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E3%83%88%E3%83%BC%E3%82%AF%E3%83%B3%E5%8F%96%E5%BE%97)
+      * [Authentication header](#authentication-header)
+        * [user token 取得の際の appid, secret](#user-token-%E5%8F%96%E5%BE%97%E3%81%AE%E9%9A%9B%E3%81%AE-appid-secret)
+          * [viewer token 取得の際の appid, secret](#viewer-token-%E5%8F%96%E5%BE%97%E3%81%AE%E9%9A%9B%E3%81%AE-appid-secret)
+      * [get user token](#get-user-token)
+        * [parameters](#parameters)
+      * [get viewer token](#get-viewer-token)
+        * [parameters](#parameters-1)
+    * [user management](#user-management)
+      * [create new user](#create-new-user)
+      * [change user attribute](#change-user-attribute)
+      * [delete user](#delete-user)
+      * [get user info](#get-user-info)
+      * [get user id by email](#get-user-id-by-email)
+    * [upload](#upload)
+      * [initiate item upload](#initiate-item-upload)
+      * [notify upload completed](#notify-upload-completed)
+      * [delete item](#delete-item)
+      * [undelete item](#undelete-item)
+    * [get item](#get-item)
+      * [get single item](#get-single-item)
+      * [get items](#get-items)
+    * [events](#events)
+      * [get user events](#get-user-events)
+      * [tell the server item(s) are read](#tell-the-server-items-are-read)
+      * [tell the server item(s) are unread](#tell-the-server-items-are-unread)
+      * [tell the server item(s) are retrieved](#tell-the-server-items-are-retrieved)
+    * [device](#device)
+      * [register device to receive push notifications](#register-device-to-receive-push-notifications)
+      * [get the list of registered devices](#get-the-list-of-registered-devices)
+      * [delete device registration](#delete-device-registration)
+      * [send a message to a registered device](#send-a-message-to-a-registered-device)
+    * [viewer API](#viewer-api)
+      * [retrieve users that can be accessed by viewer](#retrieve-users-that-can-be-accessed-by-viewer)
+      * [post viewer likes item](#post-viewer-likes-item)
+      * [get viewer info](#get-viewer-info)
+    * [file upload](#file-upload)
+      * [get upload url for HTTP put](#get-upload-url-for-http-put)
+
 # carnation server API reference
 
 ## OAuth2 アクセストークン取得
