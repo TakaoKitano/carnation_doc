@@ -4,8 +4,13 @@ Table of Contents
 
   * [carnation server API reference](#carnation-server-api-reference)
     * [OAuth2 アクセストークン取得](#oauth2-%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E3%83%88%E3%83%BC%E3%82%AF%E3%83%B3%E5%8F%96%E5%BE%97)
-      * [access token for user (camera application user)](#access-token-for-user-camera-application-user)
-      * [ccess token for viewer (STB)](#ccess-token-for-viewer-stb)
+      * [Authentication header](#authentication-header)
+        * [user token 取得の際の appid, secret](#user-token-%E5%8F%96%E5%BE%97%E3%81%AE%E9%9A%9B%E3%81%AE-appid-secret)
+          * [viewer token 取得の際の appid, secret](#viewer-token-%E5%8F%96%E5%BE%97%E3%81%AE%E9%9A%9B%E3%81%AE-appid-secret)
+      * [get user token](#get-user-token)
+        * [parameters](#parameters)
+      * [get viewer token](#get-viewer-token)
+        * [parameters](#parameters-1)
     * [user management](#user-management)
       * [create new user](#create-new-user)
       * [change user attribute](#change-user-attribute)
@@ -34,5 +39,7 @@ Table of Contents
       * [retrieve users that can be accessed by viewer](#retrieve-users-that-can-be-accessed-by-viewer)
       * [post viewer likes item](#post-viewer-likes-item)
       * [get viewer info](#get-viewer-info)
+    * [file upload](#file-upload)
+      * [get upload url for HTTP put](#get-upload-url-for-http-put)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
