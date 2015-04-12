@@ -1,0 +1,25 @@
+app:Camera application
+server:carnation server
+queue:redis cache queue
+s3:amazon S3
+db:Database
+
+app:response(item_id,item_url)*3=server./api/v1/item/initiate*1
+server:db.create item*2
+
+app:response*5=s3.HTTP put to upload an item*4
+
+app:response*8=server./api/v1/item/activate item*6
+server:queue.queue item_id*7
+
+
+
+
+
+
+
+
+
+
+
+
