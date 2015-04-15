@@ -1,0 +1,15 @@
+viewer:Actor
+app:Camera application
+server:carnation server
+parse:parse.com
+
+app:response(installationId)*2=parse.device registration*1
+app:response=server.register device (installationId)*3
+server:stop
+
+viewer:server.start viewing user item*4
+server:parse.push notification request*5
+parse:app.send push notification to device*6
+
+
+
