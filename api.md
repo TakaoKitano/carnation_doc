@@ -21,16 +21,16 @@ Table of Contents
     * [4 get item](#4-get-item)
       * [4.1 get single item](#41-get-single-item)
       * [4.2 get items](#42-get-items)
-    * [5 events](#5-events)
-      * [5.1 get user events](#51-get-user-events)
-      * [5.2 tell the server item(s) are read](#52-tell-the-server-items-are-read)
-      * [5.3 tell the server item(s) are unread](#53-tell-the-server-items-are-unread)
-      * [5.4 tell the server item(s) are retrieved](#54-tell-the-server-items-are-retrieved)
-    * [6 device registration](#6-device-registration)
-      * [6.1 register device to receive push notifications](#61-register-device-to-receive-push-notifications)
-      * [6.2 get the list of registered devices](#62-get-the-list-of-registered-devices)
-      * [6.3 delete device registration](#63-delete-device-registration)
-      * [6.4 send a message to a registered device](#64-send-a-message-to-a-registered-device)
+    * [5 device registration](#5-device-registration)
+      * [5.1 register device to receive push notifications](#51-register-device-to-receive-push-notifications)
+      * [5.2 get the list of registered devices](#52-get-the-list-of-registered-devices)
+      * [5.3 delete device registration](#53-delete-device-registration)
+      * [5.4 send a message to a registered device](#54-send-a-message-to-a-registered-device)
+    * [6 events](#6-events)
+      * [6.1 get user events](#61-get-user-events)
+      * [6.2 set event read flag](#62-set-event-read-flag)
+      * [6.3 unset event read flag](#63-unset-event-read-flag)
+      * [6.4 set event retrieved flag](#64-set-event-retrieved-flag)
     * [7 viewer API](#7-viewer-api)
       * [7.1 retrieve users that can be accessed by viewer](#71-retrieve-users-that-can-be-accessed-by-viewer)
       * [7.2 post viewer likes item](#72-post-viewer-likes-item)
@@ -1059,9 +1059,283 @@ output=full(default)
 }
 ```
 
-## 5 events
+## 5 device registration
 
-### 5.1 get user events
+carnation serverからカメラアプリに対して push notification を送るために、parse.com のサービスを利用しています.
+カメラアプリは、parse.com によって用意された API を呼び出して（通常は parse.com から提供された SDK を利用)、デバイスの登録を行う必要があります.
+parse.com にデバイスを登録することで、カメラアプリは "installationId" と呼ぶ文字列を parse.com から受け取ります.
+以下の API では、その installlationId を carnation server に登録する仕組みを提供します.
+
+**デバイス登録と push notification 送信の流れ**
+
+<a href="push_notification.svg">
+<img src="push_notification.png" alt="push_notification"/>
+</a>
+
+1. カメラアプリでは、parse.com から提供された API を呼び出して、デバイスの登録を行います
+2. カメラアプリは、parse.com より、installationId を受け取ります
+3. カメラアプリは、installationId を carnation server へ登録します
+4. STB viewer で carnation sever へアクセスして閲覧開始します
+5. carnation server から parse.com へデバイスに対して push notification(実家が閲覧始めました) を送るようにリクエストします
+6. parse.com はカメラアプリ（が動いている端末）に対して、push notification を送信します
+
+### 5.1 register device to receive push notifications
+
+| method        | end point           | required token |
+|---------------|---------------------|----------------|
+| POST          | /api/v1/user/device | user           |
+
+カメラアプリの parse.com installation ID を carnation server に登録します.
+
+**parameters**
+
+| name          |  value                       | mandatory? | default value  |
+|---------------|------------------------------|------------|----------------|
+| user_id       |  user id                     |   yes      | N/A            |
+| deviceid      |  parse.com installationID    |   yes      | N/A            |
+| devicetype    |  1:iOS, 2:Android, 3:Windows |   yes      | N/A            |
+
+**output**
+
+| name        |  value          | 
+|-------------|-----------------|
+| id          |  device registration id (carnation server internal value)|
+| user_id     |  user id                     |
+| deviceid    |  parse.com installationId    |
+| devicetype  |  1:iOS, 2:Android, 3:Windows |
+| created_at  |  unix time |
+| updated_at  |  unix time |
+
+- id は、carnation server 内部IDです. カメラアプリから使うことはありません.
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
+| 400     |  permission denied            | 権限が不足                 |
+| 400     |  deviceid required            | deviceid が指定されていない|
+| 400     |  devicetype required          | devicetype が指定されていない|
+| 400     |  deviceid might already exist | 同じ deviceid が登録されている |
+
+**example**
+
+```
+{
+  "id": 1,
+  "user_id": 4
+  "deviceid": "333555555",
+  "devicetype": 1,
+  "created_at": 1429087940,
+  "updated_at": 1429087940
+}
+
+```
+
+### 5.2 get the list of registered devices
+
+| method        | end point           | required token |
+|---------------|---------------------|----------------|
+| GET           | /api/v1/user/device | user           |
+
+carnation server に登録済みの device 一覧を取得します.
+
+**parameters**
+
+| name          |  value                       | mandatory? | default value  |
+|---------------|------------------------------|------------|----------------|
+| user_id       |  user id                     |   yes      | N/A            |
+| deviceid      |  parse.com installationID    |   no       | N/A            |
+
+- deviceid を指定した場合は、その deviceid の情報が返ります
+- deviceid を指定しなかった場合は、そのユーザーの全ての登録済みデバイスの情報が返ります
+
+**output**
+
+| name        |  value          | 
+|-------------|-----------------|
+| user_id     |  user id                 |
+| count       | devices 配列のアイテム数 |
+| devices     | device 配列              |
+
+-devices は、デバイス登録のときに返ってくる output の配列です
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
+| 400     |  permission denied            | 権限が不足                 |
+
+**example**
+```
+{
+  "user_id": 4,
+  "count": 1,
+  "devices": [
+    {
+      "id": 1,
+      "user_id": 4,
+      "deviceid": "333555555",
+      "devicetype": 1,
+      "created_at": 1429087940,
+      "updated_at": 1429087940
+    }
+  ]
+}
+```
+
+### 5.3 delete device registration
+
+| method        | end point           | required token |
+|---------------|---------------------|----------------|
+| DELETE        | /api/v1/user/device | user           |
+
+登録済みの deviceid の登録を解除します
+
+**parameters**
+
+| name          |  value                       | mandatory? | default value  |
+|---------------|------------------------------|------------|----------------|
+| user_id       |  user id                     |   yes      | N/A            |
+| deviceid      |  parse.com installationID    |   yes      | N/A            |
+
+**output**
+
+| name        |  value          | 
+|-------------|-----------------|
+| user_id     |  user id                 |
+| deleted     | 登録解除した device 情報 |
+
+- deleted の内容は登録・一覧取得の device 情報と同じ形式です
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
+| 400     |  permission denied            | 権限が不足                 |
+| 400     |  deviceid required            | deviceid が指定されていない|
+| 400     |  no such  device            | deviceid が不正|
+
+**example**
+```
+{
+  "user_id": 4,
+  "deleted": {
+    "id": 3,
+    "user_id": 4,
+    "deviceid": "333555555",
+    "devicetype": 1,
+    "created_at": 1429090353,
+    "updated_at": 1429090353
+  }
+}
+```
+
+### 5.4 send a message to a registered device
+
+| method        | end point                | required token |
+|---------------|--------------------------|----------------|
+| GET           | /api/v1/user/device/send | user           |
+
+登録済みデバイスへメッセージを送る、内部テスト用のAPIです.
+(公式の API ではないので、テスト以外の目的では呼び出さないでください)
+parse.com のサービスを利用しています.
+
+
+**parameters**
+
+| name          |  value                       | mandatory? | default value  |
+|---------------|------------------------------|------------|----------------|
+| user_id       |  user id                     |   yes      | N/A            |
+| deviceid      |  parse.com installationId    |   yes      | N/A            |
+| message       |  送信するメッセージ          |   yes      | N/A            |
+
+**output**
+
+| name        |  value          | 
+|-------------|-----------------|
+| user_id     |  user id                 |
+| deviceid    |  parse.com installationId|
+| message     |  送信したメッセージ      |
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
+| 400     |  permission denied            | 権限が不足                 |
+| 400     |  deviceid required            | deviceid が指定されていない|
+| 400     |  no such  device              | deviceid が不正            |
+| 400     |  message required             | message が指定されていない |
+
+**example**
+```
+{
+  "user_id": 4,
+  "deviceid": "333555555",
+  "message": "hello"
+}
+```
+
+## 6 events
+
+### 6.1 get user events
+
+| method        | end point                | required token |
+|---------------|--------------------------|----------------|
+| GET           | /api/v1/user/events      | user           |
+
+イベント一覧を取得します
+
+**parameters**
+
+| name          |  value                 | mandatory? | default value  |
+|---------------|------------------------|------------|----------------|
+| user_id       |  user id               |   yes      | N/A            |
+| event_id      |  event id              |   no       | N/A            |
+| count         |  取得イベントの最大数  |   no       | 50             |
+| greater_than  |  event id              |   no       | N/A            |
+| less_than     |  event id              |   no       | N/A            |
+| created_after |  unix time             |   no       | N/A            |
+| created_before|  unix time             |   no       | N/A            |
+| updated_after | unix time              |   no       | N/A            |
+| updated_before| unix time              |   no       | N/A            |
+| order         | "asc", "desc"          |   no       | "asc"          |
+
+- event_id を指定した場合、その event_id のイベントのみが返ります
+- count に指定できる最大値は 1000 です
+- order は、event_id による整列の順番を指定します. asc:event idが小さいもの先（古いものが先), desc:event id が大きいものが先 (新しいものが先)
+
+**output**
+
+| name        |  value          | 
+|-------------|-----------------|
+| user_id     | user id         |
+| new_count   | 新規イベント数 |
+| max_retrieved_id | 取得済 イベントのうちもっとも大きな id |
+| events      | event の配列   |
+
+イベントは次のような構造です.
+
+| name        |  value          | 
+|-------------|-----------------|
+| id          | イベント id     |
+|created_at   | unix time       |
+|updated_at   | unix time       |
+|event_type   | イベントタイプ  |
+|viewer_id    | viewer id       |
+|read         | true/false 既読 |
+|retrieved    | true/false 取得済     |
+|viewer_name  | viewer name    |
+|item_ids     | item id の配列 |
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
 
 **example**
 
@@ -1183,7 +1457,36 @@ output=full(default)
 }
 ```
 
-### 5.2 tell the server item(s) are read
+### 6.2 set event read flag
+
+| method        | end point                | required token |
+|---------------|--------------------------|----------------|
+| POST          | /api/v1/user/events/read | user           |
+
+指定したイベントを既読にします.
+event の read の項が、true に変化します.
+
+**parameters**
+
+| name          |  value                 | mandatory? | default value  |
+|---------------|------------------------|------------|----------------|
+| user_id       |  user id               |   yes      | N/A            |
+| event_id      |  event id のリスト     |   no       | "all"          |
+
+- event_id は、カンマで区切られた event_id のリストです. もし指定しない場合は、全ての event を既読にします.
+
+**output**
+
+| name      |  value                 |
+|-----------|------------------------|
+| user_id   |  user id               |
+| event     |  event id の配列       |
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
 
 **example**
 ```
@@ -1197,7 +1500,36 @@ output=full(default)
 }
 ```
 
-### 5.3 tell the server item(s) are unread
+### 6.3 unset event read flag
+
+| method        | end point                  | required token |
+|---------------|----------------------------|----------------|
+| POST          | /api/v1/user/events/unread | user           |
+
+指定したイベントを未読にします.
+event の read の項が、false に変化します.
+
+**parameters**
+
+| name          |  value                 | mandatory? | default value  |
+|---------------|------------------------|------------|----------------|
+| user_id       |  user id               |   yes      | N/A            |
+| event_id      |  event id のリスト     |   no       | "all"          |
+
+- event_id は、カンマで区切られた event_id のリストです. もし指定しない場合は、全ての event を未読にします.
+
+**output**
+
+| name      |  value                 |
+|-----------|------------------------|
+| user_id   |  user id               |
+| event     |  event id の配列       |
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
 
 **example**
 ```
@@ -1209,17 +1541,46 @@ output=full(default)
 }
 ```
 
-### 5.4 tell the server item(s) are retrieved
+### 6.4 set event retrieved flag
 
-## 6 device registration
+| method        | end point                | required token |
+|---------------|--------------------------|----------------|
+| POST          | /api/v1/user/events/retrieved | user           |
 
-### 6.1 register device to receive push notifications
+指定したイベントを取得済み状態に設定します.
+event の retrieved の項が、true に変化します.
 
-### 6.2 get the list of registered devices
+**parameters**
 
-### 6.3 delete device registration
+| name          |  value                 | mandatory? | default value  |
+|---------------|------------------------|------------|----------------|
+| user_id       |  user id               |   yes      | N/A            |
+| event_id      |  event id              |   no       | "all"          |
 
-### 6.4 send a message to a registered device
+- event_id は、 取得済みに設定するevent_id の最大値です. この指定された id 以下のイベント（すなわちこのidで指定されたイベント及び、それよりも古いイベントが取得済みに設定されます. またこの id よりも大きな id を持つイベントは、未取得状態に設定されます.
+もし指定しない場合は、全ての event が取得済みとなります.
+
+**output**
+
+| name      |  value                 |
+|-----------|------------------------|
+| user_id   |  user id               |
+| event     |  event id              |
+
+**error**
+
+| code    |  message                      | description |
+|---------|-------------------------------|----------------------------|
+| 404     |  user not found               | user_id が不正             |
+
+**example**
+```
+{
+  "user_id": 4,
+  "event": 5
+}
+```
+
 
 ## 7 viewer API
 
